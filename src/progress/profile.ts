@@ -253,6 +253,16 @@ export function adjustSafety(p: Profile, delta: number): number {
 export const hasUpgrade = (p: Profile, u: UpgradeId) => p.upgrades.includes(u);
 export const done = (p: Profile, id: string) => (p.completed[id] ?? 0) > 0;
 
+/** Still learning the ropes: Morning Rounds, the first call, has never been finished. */
+export const firstRun = (p: Profile) => !done(p, 'rounds');
+
+/**
+ * Whether the route line is drawn: the assist when it is on, and always on the first ride up the pass
+ * road (Morning Rounds, before it has ever been finished). The compass points straight at the weather
+ * station, and the straight line crosses slopes the sled cannot climb, so the first time the road is shown.
+ */
+export const routeGuided = (p: Profile) => p.settings.routeLine || (p.active?.id === 'rounds' && firstRun(p));
+
 /** Missions on the board right now: unlocked story missions not yet done, and waiting events. */
 export function available(p: Profile): string[] {
   const story = MISSIONS.filter((m) => !m.dynamic && !done(p, m.id) && m.requires.every((r) => done(p, r))).map((m) => m.id);

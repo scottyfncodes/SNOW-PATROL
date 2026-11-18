@@ -338,7 +338,9 @@ export class Hud {
     this.wp.style.opacity = Math.abs(d) > span / 2 ? '0.6' : '1';
     this.wpDist.style.display = '';
     const dtxt = dist >= 1000 ? `${(dist / 1000).toFixed(1)} km` : `${Math.round(dist)} m`;
-    this.put('wp', this.wpDist, `${label ? label + '  ' : ''}${dtxt}`);
+    // the place's name gives way on a narrow screen; the distance never does
+    const nm = label.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+    this.put('wp', this.wpDist, `${label ? `<span class="nm">${nm}</span> ` : ''}<span class="d">${dtxt}</span>`, true);
   }
 
   setConditions(time: string, wx: string, danger: number, dangerTxt: string, funds: number) {

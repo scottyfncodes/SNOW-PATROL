@@ -31,7 +31,7 @@ import { Snowpack, simulateRelease, STORY_LOADED } from '../missions/avalanche';
 import { FAMILY_LABEL, isControl, mission, MISSIONS, slopeList, type MissionDef, type Vehicle } from '../missions/catalog';
 import { currentStep, fire, fireState, interact, interactables, navTarget, newRun, stepContacts, tickRun, type RunEvent } from '../missions/runner';
 import { BADGES, item, RANKS, type Group } from '../progress/catalog';
-import { available, browserStore, build, buy, checkBowl, complete, CONTROL_PAY, done, equip, findBadge, hasUpgrade, loadProfile, newProfile, rank, saveProfile, tickEvents, type Profile, type Settings, type Store } from '../progress/profile';
+import { available, browserStore, build, buy, checkBowl, complete, CONTROL_PAY, done, equip, findBadge, firstRun, hasUpgrade, loadProfile, newProfile, rank, routeGuided, saveProfile, tickEvents, type Profile, type Settings, type Store } from '../progress/profile';
 import { PatrollerMesh, type Pose } from '../render/characterMesh';
 import { ForestView } from '../render/forestView';
 import { FX_KIND, GroundDrift, Particles, Snowfall, Tracks } from '../render/fx';
@@ -765,10 +765,15 @@ export class Game {
     const box = document.createElement('div');
     box.className = 'dayblock';
     const d = p.patrolDay;
+    // a first morning: the call dispatch sent you to leads, and the patrol day waits below it
+    const learning = !d && firstRun(p);
     box.innerHTML = d
       ? `<div class="label">Patrol day under way</div><p>${KIND_LABEL[d.plan.kind]} · ${d.phase === 'control' ? 'control route, runs closed' : `${d.results.length} of ${d.plan.calls.length} calls`}</p><div class="row"><button class="btn ghost" data-a="end">End the day and report</button></div>`
-      : `<div class="label">Patrol day</div><p>A full day: the briefing, the control route, the calls, the report. About ten to fifteen minutes.</p><div class="row"><button class="btn red" data-a="day">Start a patrol day</button><button class="btn ghost" data-a="storm">Daily Storm · ${dateLabel(today)}${did ? ' (done)' : ''}</button></div><p class="aside">Streak ${p.storm.streak} · resort safety ${p.safety}/100 · Koda's bond ${p.bond}/100 · ${p.xp} XP</p>`;
-    body.prepend(box);
+      : `<div class="label">Patrol day</div><p>A full day: the briefing, the control route, the calls, the report. About ten to fifteen minutes.</p><div class="row"><button class="btn ${learning ? 'ghost' : 'red'}" data-a="day">Start a patrol day</button><button class="btn ghost" data-a="storm">Daily Storm · ${dateLabel(today)}${did ? ' (done)' : ''}</button></div><p class="aside">Streak ${p.storm.streak} · resort safety ${p.safety}/100 · Koda's bond ${p.bond}/100 · ${p.xp} XP</p>`;
+    if (learning) {
+      box.classList.add('later');
+      (body.querySelector('.board > div:last-child') ?? body).append(box);
+    } else body.prepend(box);
     const on = (a: string, f: () => void) => {
       const b = box.querySelector(`[data-a=${a}]`) as HTMLElement | null;
       if (b) b.onclick = f;
@@ -1924,6 +1929,9 @@ export class Game {
             this.hud.radio('Avalanche service', 'Charges set. Get clear of the slope: up on the ridge is safe. Then fire.', 5);
           }
           if (s.kind === 'carry') this.hud.radio('Nils', "Thank you. I really didn't fancy another night out here.", 4);
+          // the first ride: the compass points straight over the mountain, the road goes round it
+          if (r.id === 'rounds' && s.kind === 'goto' && firstRun(this.p) && !this.p.settings.routeLine)
+            this.hud.radio('Dispatch', 'Stay on the pass road: follow the dots and the orange poles. Route line in the pause menu keeps the dots on every call.', 6);
           if (r.id === 'skier' && s.kind === 'goto' && e.index === 4) this.hud.radio('Tannberg ski patrol', 'The clinic in Hollin is expecting him.', 3.5);
           this.syncMissionVisuals();
           this.save();
@@ -2721,12 +2729,12 @@ export class Game {
   }
 
   /**
-   * The route line (an assist, off unless chosen): dots on the snow along the roads to the objective.
-   * Planned again only when the target moves or you stray from the plan; on foot, on the sled and on
+   * The route line (an assist, off unless chosen, and shown on the first ride up the pass road): dots on
+   * the snow along the roads to the objective. Planned again only when the target moves or you stray from the plan; on foot, on the sled and on
    * skis (from the helicopter the beacon and compass are the guide).
    */
   private updateRoute(target: { x: number; z: number } | null, pos: { x: number; z: number }) {
-    const on = this.p.settings.routeLine && !!target && this.mode !== 'heli' && !(this.watching > 0 && !this.watchSkip);
+    const on = routeGuided(this.p) && !!target && this.mode !== 'heli' && !(this.watching > 0 && !this.watchSkip);
     if (!on || !target) {
       this.way = null;
       this.markers.setRoute(null);

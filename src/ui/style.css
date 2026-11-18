@@ -1331,6 +1331,9 @@ button {
   background: var(--paper);
   color: var(--ink);
 }
+.board.first .mdetail {
+  margin: 0 0 12px;
+}
 .mdetail h3 {
   margin: 2px 0 6px;
   font-weight: 600;
@@ -1684,6 +1687,10 @@ body.titled #loading .loading-bar {
      the forecast and the call list would run off the right of a 390 px phone) */
   .board {
     grid-template-columns: minmax(0, 1fr);
+  }
+  /* a first morning on a phone: the call before the map */
+  .board.first > div:last-child {
+    order: -1;
   }
 }
 @media (max-height: 460px) {
@@ -2791,10 +2798,19 @@ body.titled #loading .loading-bar {
   }
   .hud .stack > .wp-dist {
     flex: none;
+    display: flex;
+    gap: 0.6em;
     max-width: 58%;
     line-height: 24px;
     overflow: hidden;
+  }
+  .hud .stack > .wp-dist .nm {
+    min-width: 0;
+    overflow: hidden;
     text-overflow: ellipsis;
+  }
+  .hud .stack > .wp-dist .d {
+    flex: none;
   }
   /* the thumb cluster: the action button in the corner, the round buttons on an arc 86 px out from its
      centre (left of it, up and left, above), nearest first */
@@ -3041,6 +3057,9 @@ body.titled #loading .loading-bar {
 .panel .dayblock {
   padding: 10px 12px;
   margin-bottom: 12px;
+}
+.panel .dayblock.later {
+  margin: 12px 0 0;
   border-radius: 10px;
   background: rgba(246, 236, 220, 0.08);
   box-shadow: inset 0 0 0 1px var(--line);
