@@ -1,13 +1,14 @@
-# First morning, no captures re-taken (2026-11-18)
+# Captures re-taken for the gameplay pass: first morning and the snow veil (2026-11-18)
 
 A new patrol's first mission table leads with Morning Rounds (its brief and Take this call, above the map
 on a phone) and puts the patrol day under it with a ghost button; from the second morning on the table is
-exactly as captured. The objective chip lets the place name give way to the distance on a narrow screen.
-Both use the existing panel, card and chip styles. No palette, type, token, model or shader changed;
-`tokens.json` is unchanged. `capture.mjs` now marks Morning Rounds done before the `ui-board`,
-`ui-board-station` and `phone-board` shots, so a rebuild keeps capturing the standard table (the forecast
-crop `ui-forecast` is cut from `ui-board` at fixed coordinates). Those three shots, re-taken to check,
-match the edition 2.7 captures in layout; the captures were left as they are.
+as before. The objective chip lets the place name give way to the distance on a narrow screen. In falling
+snow a fine veil from the FXCraft snow flipbook (`public/fx/snow_flipbook.png`) hangs in front of the lens,
+tinted by the air (page 16 says so). No palette, type, token, model or shader of the world changed;
+`tokens.json` is unchanged. `capture.mjs` marks Morning Rounds done before the `ui-board`,
+`ui-board-station` and `phone-board` shots so the bible keeps showing the standard table, and the
+`ui-forecast` crop now frames the forecast (since the patrol day block went in above it the crop had shown
+a corner of that block). Every capture re-taken.
 
 # Captures re-taken for the gameplay expansion, phase 3 (2026-11-09)
 
