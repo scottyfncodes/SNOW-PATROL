@@ -1191,32 +1191,8 @@
    "status": "source",
    "notes": "Every page of art/kessel-art-bible.pdf as Poppler renders it: the evidence for art/bible/QA.md",
    "sha256": "2a9ac8800353d67690b996d3eb06486c66d6080f57d159cd285e8f3824355fc2"
-  },
-  {
-   "path": "../public/fx/snow_flipbook.png",
-   "bytes": 152521,
-   "tools": "StudioCraft FXCraft flipbook (snow)",
-   "status": "shipped",
-   "notes": "falling-snow loop, 32 frames of 128 px on a 6x6 sheet, 24 fps: the snow veil (SnowVeil)",
-   "sha256": "7413ad96e95c79e53789fb16f920147d4155121fbaf36d200d7ead972f3617d9"
-  },
-  {
-   "path": "../public/fx/snow_flipbook.json",
-   "bytes": 207,
-   "tools": "StudioCraft FXCraft flipbook (snow)",
-   "status": "shipped",
-   "notes": "the snow loop's meta: frames, grid, fps",
-   "sha256": "6288be82fe0a13c211b8f7f92a016f9f32c2224866225270ef3a3e38b6f47c20"
-  },
-  {
-   "path": "../public/fx/snow_atlas.json",
-   "bytes": 8842,
-   "tools": "StudioCraft FXCraft flipbook (snow)",
-   "status": "shipped",
-   "notes": "the snow loop's frame rectangles (TexturePacker hash)",
-   "sha256": "4bb7ea34afbb53afe38a7df93b02587b420268e16c830827b2ae8b663cb4ee75"
   }
  ],
- "files": 153,
+ "files": 150,
  "updated": "2026-11-05T16:07:56Z"
 }
