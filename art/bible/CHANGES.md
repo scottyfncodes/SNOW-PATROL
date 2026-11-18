@@ -1,3 +1,14 @@
+# First morning, no captures re-taken (2026-11-18)
+
+A new patrol's first mission table leads with Morning Rounds (its brief and Take this call, above the map
+on a phone) and puts the patrol day under it with a ghost button; from the second morning on the table is
+exactly as captured. The objective chip lets the place name give way to the distance on a narrow screen.
+Both use the existing panel, card and chip styles. No palette, type, token, model or shader changed;
+`tokens.json` is unchanged. `capture.mjs` now marks Morning Rounds done before the `ui-board`,
+`ui-board-station` and `phone-board` shots, so a rebuild keeps capturing the standard table (the forecast
+crop `ui-forecast` is cut from `ui-board` at fixed coordinates). Those three shots, re-taken to check,
+match the edition 2.7 captures in layout; the captures were left as they are.
+
 # Captures re-taken for the gameplay expansion, phase 3 (2026-11-09)
 
 The backcountry gate behind the top station (posts, rope and a sign in the existing signal red), a

@@ -135,8 +135,10 @@ async function at(page, name, kind, s, note, wait = 2600) {
     await page.waitForTimeout(2600); // the panel rises in over 0.3 s of animation; software WebGL frames are slow
     await shot(page, name, 'ui', note);
   };
-  await panel('ui-board', () => window.patrol.game.openBoard('calls'), 'The mission table: calls, forecast and avalanche danger');
-  await panel('ui-board-station', () => window.patrol.game.openBoard('station'), 'The mission table: building up the station');
+  // the table as it is every morning after the first (a first morning leads with Morning Rounds instead)
+  await panel('ui-board', () => { window.patrol.profile().completed.rounds = 1; window.patrol.game.openBoard('calls'); }, 'The mission table: calls, forecast and avalanche danger');
+  await panel('ui-board-station', () => { window.patrol.profile().completed.rounds = 1; window.patrol.game.openBoard('station'); }, 'The mission table: building up the station');
+  await G(() => { delete window.patrol.profile().completed.rounds; });
   await panel('ui-wardrobe', () => window.patrol.game.openOutfit('Wardrobe', ['patroller']), 'The wardrobe');
   await panel('ui-map', () => window.patrol.game.openMap(), 'The valley map');
   await panel('ui-pause', () => window.patrol.game.openPause(), 'Pause: settings and assists');
@@ -209,7 +211,7 @@ async function at(page, name, kind, s, note, wait = 2600) {
   await page.waitForTimeout(1800);
   await page.addStyleTag({ content: '.dispatch{display:none!important}' });
   await at(page, 'phone-hud', 'ui', { x: 415, z: 304, yaw: 0.35, minute: 9 * 60 + 30 }, 'HUD on a phone: stick, look, the action button and chips');
-  await page.evaluate(() => window.patrol.game.openBoard('calls'));
+  await page.evaluate(() => { window.patrol.profile().completed.rounds = 1; window.patrol.game.openBoard('calls'); });
   await page.waitForTimeout(1500);
   await shot(page, 'phone-board', 'ui', 'The mission table on a phone');
   await ctx.close();
