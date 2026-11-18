@@ -1,0 +1,24 @@
+{
+ "assets": {
+  "public/fx/snow_atlas.json": {
+   "format": "json",
+   "role": "atlas (TexturePacker hash: Phaser, PixiJS)",
+   "sha256": "4bb7ea34afbb53afe38a7df93b02587b420268e16c830827b2ae8b663cb4ee75",
+   "task": "vfx.snow"
+  },
+  "public/fx/snow_flipbook.json": {
+   "format": "json",
+   "role": "flipbook_meta",
+   "sha256": "6288be82fe0a13c211b8f7f92a016f9f32c2224866225270ef3a3e38b6f47c20",
+   "task": "vfx.snow"
+  },
+  "public/fx/snow_flipbook.png": {
+   "format": "png",
+   "role": "flipbook",
+   "sha256": "7413ad96e95c79e53789fb16f920147d4155121fbaf36d200d7ead972f3617d9",
+   "task": "vfx.snow"
+  }
+ },
+ "owner": "integration",
+ "schema": "gitcraft-assets/1"
+}

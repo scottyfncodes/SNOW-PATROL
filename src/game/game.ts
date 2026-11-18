@@ -34,7 +34,7 @@ import { BADGES, item, RANKS, type Group } from '../progress/catalog';
 import { available, browserStore, build, buy, checkBowl, complete, CONTROL_PAY, done, equip, findBadge, firstRun, hasUpgrade, loadProfile, newProfile, rank, routeGuided, saveProfile, tickEvents, type Profile, type Settings, type Store } from '../progress/profile';
 import { PatrollerMesh, type Pose } from '../render/characterMesh';
 import { ForestView } from '../render/forestView';
-import { FX_KIND, GroundDrift, Particles, Snowfall, Tracks } from '../render/fx';
+import { FX_KIND, GroundDrift, Particles, Snowfall, SnowVeil, snowLoop, Tracks, veilAmount } from '../render/fx';
 
 /** Vince's hair: honey blonde */
 const VINCE_HAIR = 0xe6c27a;
@@ -112,6 +112,8 @@ export class Game {
   private props!: MissionProps;
   private particles!: Particles;
   private snowfall!: Snowfall;
+  /** fine snow in front of the lens (the vfx.snow flipbook); null until it loads, and on Light */
+  private veil: SnowVeil | null = null;
   private tracks!: Tracks;
   private drift!: GroundDrift;
   private spinT = 0;
@@ -289,6 +291,7 @@ export class Game {
     this.modelled.lift = this.world.liftModelled;
     this.particles = new Particles(this.rig.quality.tier === 'low' ? 1600 : 2600);
     this.loadFxAtlas();
+    this.loadSnowVeil();
     this.snowfall = new Snowfall(this.rig.quality.snowflakes);
     this.drift = new GroundDrift(this.terrain, this.rig.quality.tier === 'low' ? 380 : 700, this.rig.quality.tier === 'low' ? 36 : 64);
     this.tracks = new Tracks(this.terrain, this.rig.quality.tier === 'low' ? 1100 : 1800);
@@ -1461,6 +1464,7 @@ export class Game {
     this.smoke(dt);
     this.particles.update(dt, this.rig.fog, this.pixelScale());
     this.snowfall.update(dt, c.position, this.cond.snow, this.cond.wind * 4, this.cond.wind);
+    this.updateVeil(dt, this.cond.snow, this.cond.wind);
   }
 
   /** While a panel is open: the world holds still, the fire still flickers. */
@@ -1571,6 +1575,7 @@ export class Game {
     this.smoke(dt);
     this.particles.update(dt, this.rig.fog, this.pixelScale());
     this.snowfall.update(dt, this.rig.camera.position, c.snow * (1 - this.indoors * 0.8), c.wind * 6, c.wind * 2);
+    this.updateVeil(dt, c.snow, c.wind);
     this.drift.update(dt, this.rig.camera.position, c.wind, 4, 1, c.snow, 1 - this.indoors);
     this.cam.wind = c.wind;
     this.spindrift(dt, c.wind, c.light);
@@ -2582,6 +2587,43 @@ export class Game {
     );
   }
 
+  /** The vfx.snow flipbook: its atlas gives the frames, its meta the rate. Light, or a failed load, goes without. */
+  private veilLoading = false;
+  private loadSnowVeil() {
+    if (this.veil) this.veil.mesh.visible = false;
+    if (!this.rig.quality.fx || this.veil || this.veilLoading) return;
+    this.veilLoading = true;
+    const base = `${import.meta.env.BASE_URL}fx/`;
+    const json = (n: string) => fetch(base + n).then((r) => (r.ok ? r.json() : Promise.reject(new Error(n))));
+    Promise.all([json('snow_atlas.json'), json('snow_flipbook.json'), new THREE.TextureLoader().loadAsync(`${base}snow_flipbook.png`)])
+      .then(([atlas, meta, tex]) => {
+        tex.flipY = false;
+        tex.colorSpace = THREE.NoColorSpace;
+        tex.generateMipmaps = false;
+        tex.minFilter = THREE.LinearFilter;
+        this.veil = new SnowVeil(snowLoop(atlas, meta), tex);
+        this.rig.scene.add(this.veil.mesh);
+      })
+      .catch(() => {
+        /* the 3D flakes carry the snowfall on their own */
+      });
+  }
+
+  private readonly veilRight = new THREE.Vector3();
+  private updateVeil(dt: number, snow: number, wind: number) {
+    const v = this.veil;
+    if (!v) return;
+    if (!this.rig.quality.fx) {
+      v.mesh.visible = false;
+      return;
+    }
+    // the wind blows along +x, +z (as the falling flakes do): how much of it crosses the view
+    const right = this.veilRight.setFromMatrixColumn(this.rig.camera.matrixWorld, 0);
+    const across = (right.x * 6 + right.z * 2) / Math.hypot(6, 2);
+    const cv = this.rig.renderer.domElement;
+    v.update(dt, veilAmount(snow, this.indoors), wind * 6 * across, cv.clientWidth, cv.clientHeight, this.rig.fog.color);
+  }
+
   private hearthFlame = 0;
   private readonly hearthPos = new THREE.Vector3();
 
@@ -2903,6 +2945,7 @@ export class Game {
     if (q) {
       this.rig.quality = detectQuality(s.quality);
       this.loadFxAtlas();
+    this.loadSnowVeil();
       this.rig.resize();
     }
     this.save();
