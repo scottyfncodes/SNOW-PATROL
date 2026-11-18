@@ -69,7 +69,7 @@ def captures():
     # derived crops, all from captures: the in-game wordmark and the emblem without its square field
     title = Image.open(os.path.join(CAPS, "ui-title.jpg"))
     # crops of captures (recorded in shots.json under "derived"): the wordmark and the forecast strip
-    derived = {"ui-title-wordmark": ("ui-title", (428, 536, 1012, 744)), "ui-forecast": ("ui-board", (728, 222, 1165, 334))}
+    derived = {"ui-title-wordmark": ("ui-title", (428, 536, 1012, 744)), "ui-forecast": ("ui-board", (726, 424, 1167, 538))}
     for name, (src, box) in derived.items():
         Image.open(os.path.join(CAPS, src + ".jpg")).crop(box).save(os.path.join(CAPS, name + ".jpg"), quality=90)
     meta["derived"] = {k: {"from": v[0], "crop": v[1]} for k, v in derived.items()}
@@ -622,7 +622,7 @@ def p_weather(sp):
     cw = (W - 2 * M - 30) / 2
     bullets(sp, [M, y, M + cw, 760], [
         "Wind is visible: grains and wisps stream past at boot height, spindrift tears off the summits, the camera breathes more on an exposed day.",
-        "Snowfall is particles that thicken with the forecast; tracks from boots, the sled and skis fill in faster while it falls.",
+        "Snowfall is particles that thicken with the forecast, with a fine veil from the snow flipbook (public/fx/snow_flipbook.png) in front of the lens, lit by the air so it never glows at night; tracks from boots, the sled and skis fill in faster while it falls.",
         "Sky values per state (weather.ts): cloud 0.05 / 0.7 / 0.85 / 1, fog 0 / 0.25 / 0.5 / 1 for clear, overcast, snow, storm.",
     ], size=9.2, gap=4)
     bullets(sp, [M + cw + 30, y, W - M, 760], [

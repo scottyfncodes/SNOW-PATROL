@@ -33,6 +33,7 @@ licences extends to what they produced.
 | The range around the valley (an eroded heightfield) | `src/world/frontRange.ts` | WorldCraft `terrain` (preset mountains, 40 hydraulic + 80 thermal erosion passes, seed 14), downsampled with `art/world/build_range.py` | Owned by this project |
 | High-altitude wind bed | `public/audio/amb/` | AudioCraft `ambience` (wind, seamless 24 s loop) + FFmpeg | Owned by this project |
 | Particle atlas (powder puff, powder burst, charge blast, hearth fire) | `public/fx/kessel-fx.png` | StudioCraft FXCraft `flipbook` (NumPy, Pillow) + `art/fx/build_fx.py` | Owned by this project |
+| Snow veil (fine falling snow in front of the lens, a 32-frame loop) | `public/fx/snow_flipbook.png`, `snow_flipbook.json`, `snow_atlas.json` | StudioCraft FXCraft `flipbook` (snow) | Owned by this project |
 | Teaser trailer (not shipped in the game) | `docs/trailer/` | CinematicCraft `capture`, `title_card`, `assemble` (Playwright, Chromium, FFmpeg/x264) | Owned by this project |
 
 The voices are synthetic: no real person's voice was recorded, cloned or imitated.

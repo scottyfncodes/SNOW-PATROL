@@ -1,6 +1,6 @@
 import { FAMILY_LABEL, mission, MISSIONS, slopeList } from '../missions/catalog';
 import { BADGES, GROUP_LABEL, GROUP_SLOTS, item, ITEMS, RANKS, SLOT_LABEL, type Group } from '../progress/catalog';
-import { available, blockReason, done, nextGoal, rank, upgradeBlock, type Profile, type Settings } from '../progress/profile';
+import { available, blockReason, done, firstRun, nextGoal, rank, upgradeBlock, type Profile, type Settings } from '../progress/profile';
 import { mapUV } from '../render/topoMap';
 import { MapView } from './mapView';
 import { UPGRADES } from '../world/station';
@@ -239,7 +239,10 @@ export class Panels {
         same.sel ||= id === chosen;
       } else pins.push({ x: w.x, z: w.z, label: mission(id).title, sel: id === chosen });
     }
-    body.innerHTML = `<div class="board"><div>${this.mapCard(null, pins)}</div><div>${goal}${fcH}${dl}${list}${detail}</div></div>`;
+    // a first morning: the call dispatch sent you to comes first (above the map on a phone), the rest after it
+    body.innerHTML = firstRun(p) && !p.active
+      ? `<div class="board first"><div>${this.mapCard(null, pins)}</div><div>${detail}${list}${goal}${fcH}${dl}</div></div>`
+      : `<div class="board"><div>${this.mapCard(null, pins)}</div><div>${goal}${fcH}${dl}${list}${detail}</div></div>`;
     this.wireMaps(body);
     body.querySelectorAll('[data-m]').forEach((b) => ((b as HTMLElement).onclick = () => this.board(p, c, danger, onAccept, onBuild, 'calls', (b as HTMLElement).dataset.m)));
     const go = body.querySelector('[data-go]') as HTMLButtonElement | null;

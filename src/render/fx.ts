@@ -598,3 +598,114 @@ export class GroundDrift {
     (this.wisps.geometry.getAttribute('position') as THREE.BufferAttribute).needsUpdate = true;
   }
 }
+
+/** The vfx.snow flipbook (public/fx/snow_flipbook.png): frame rectangles from its atlas, the loop's rate. */
+export interface SnowLoop {
+  /** each frame's rectangle in the image, 0..1, top-left origin */
+  frames: { x: number; y: number; w: number; h: number }[];
+  fps: number;
+}
+
+/** Read the flipbook's TexturePacker atlas and its meta (frames in name order, the loop's fps). */
+export function snowLoop(atlas: { frames: Record<string, { frame: { x: number; y: number; w: number; h: number } }>; meta: { size: { w: number; h: number } } }, meta: { fps?: number }): SnowLoop {
+  const { w: W, h: H } = atlas.meta.size;
+  const frames = Object.keys(atlas.frames)
+    .sort()
+    .map((k) => {
+      const f = atlas.frames[k].frame;
+      return { x: f.x / W, y: f.y / H, w: f.w / W, h: f.h / H };
+    });
+  return { frames, fps: meta.fps && meta.fps > 0 ? meta.fps : 24 };
+}
+
+/** How thick the veil is: the snowfall, mostly gone indoors, nothing on a dry day. */
+export function veilAmount(snow: number, indoors: number): number {
+  const s = Math.max(0, Math.min(1, snow));
+  return s < 0.04 ? 0 : s * (1 - Math.max(0, Math.min(1, indoors)) * 0.95);
+}
+
+const VEIL_VERT = /* glsl */ `
+  varying vec2 vUv;
+  void main() {
+    vUv = uv;
+    gl_Position = vec4(position.xy, 0.0, 1.0);
+  }
+`;
+const VEIL_FRAG = /* glsl */ `
+  varying vec2 vUv;
+  uniform sampler2D uMap;
+  uniform vec4 uNear;
+  uniform vec4 uFar;
+  uniform vec2 uTiles;
+  uniform float uAspect;
+  uniform vec2 uDrift;
+  uniform float uAmount;
+  uniform vec3 uTint;
+  float layer(vec4 frame, float tiles, vec2 drift) {
+    vec2 p = vec2(vUv.x * uAspect, 1.0 - vUv.y) * tiles + drift;
+    return texture2D(uMap, frame.xy + fract(p) * frame.zw).a;
+  }
+  void main() {
+    // the loop's flakes are faint on their own: weighted up, the near layer over the far one
+    float a = layer(uNear, uTiles.x, uDrift) * 1.25 + layer(uFar, uTiles.y, uDrift * 0.45) * 0.7;
+    a = min(1.0, a) * uAmount;
+    if (a < 0.004) discard;
+    gl_FragColor = vec4(uTint, a);
+  }
+`;
+
+/**
+ * A veil of fine snow right in front of the lens, from the vfx.snow flipbook: two layers of the loop
+ * (a near, coarser one and a far, finer one half a loop apart) drifting with the wind, over the 3D flakes.
+ * It thickens with the snowfall, is all but gone indoors and is not drawn on a dry day or on Light.
+ */
+export class SnowVeil {
+  readonly mesh: THREE.Mesh;
+  private readonly u: Record<string, THREE.IUniform>;
+  private t = 0;
+  private dx = 0;
+
+  constructor(private readonly loop: SnowLoop, map: THREE.Texture) {
+    this.u = {
+      uMap: { value: map },
+      uNear: { value: new THREE.Vector4() },
+      uFar: { value: new THREE.Vector4() },
+      uTiles: { value: new THREE.Vector2(4, 7) },
+      uAspect: { value: 1 },
+      uDrift: { value: new THREE.Vector2() },
+      uAmount: { value: 0 },
+      uTint: { value: new THREE.Color(WHITE[0], WHITE[1], WHITE[2]) },
+    };
+    const m = new THREE.ShaderMaterial({ vertexShader: VEIL_VERT, fragmentShader: VEIL_FRAG, uniforms: this.u, transparent: true, depthTest: false, depthWrite: false });
+    this.mesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), m);
+    this.mesh.frustumCulled = false;
+    this.mesh.renderOrder = 20;
+    this.mesh.visible = false;
+  }
+
+  /**
+   * `amount` from veilAmount; `wind` across the view, m/s (positive: to the right); the canvas in CSS px;
+   * `air` the colour of the air (the fog): the flakes take the light of the hour, bright by day, dim at night.
+   */
+  update(dt: number, amount: number, wind: number, width: number, height: number, air: THREE.Color) {
+    this.mesh.visible = amount > 0.004 && width > 0 && height > 0;
+    if (!this.mesh.visible) return;
+    this.t += dt;
+    this.dx += dt * wind * 0.02;
+    const f = this.loop.frames;
+    const i = Math.floor(this.t * this.loop.fps) % f.length;
+    const a = f[i];
+    const b = f[(i + (f.length >> 1)) % f.length];
+    (this.u.uNear.value as THREE.Vector4).set(a.x, a.y, a.w, a.h);
+    (this.u.uFar.value as THREE.Vector4).set(b.x, b.y, b.w, b.h);
+    // one near tile is about 190 CSS px tall, a far one about 110: flakes that read on a phone, never a grid
+    (this.u.uTiles.value as THREE.Vector2).set(height / 190, height / 110);
+    this.u.uAspect.value = width / height;
+    (this.u.uDrift.value as THREE.Vector2).set(-this.dx, 0);
+    this.u.uAmount.value = Math.min(1, amount);
+    const tint = this.u.uTint.value as THREE.Color;
+    tint.setRGB(WHITE[0], WHITE[1], WHITE[2]).lerp(air, 0.3);
+    // never brighter than snow; dimmer as the air darkens, so night flakes do not glow
+    tint.multiplyScalar(Math.min(1, 0.55 + (0.2126 * air.r + 0.7152 * air.g + 0.0722 * air.b) * 0.8));
+  }
+}

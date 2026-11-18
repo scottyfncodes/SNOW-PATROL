@@ -31,10 +31,10 @@ import { Snowpack, simulateRelease, STORY_LOADED } from '../missions/avalanche';
 import { FAMILY_LABEL, isControl, mission, MISSIONS, slopeList, type MissionDef, type Vehicle } from '../missions/catalog';
 import { currentStep, fire, fireState, interact, interactables, navTarget, newRun, stepContacts, tickRun, type RunEvent } from '../missions/runner';
 import { BADGES, item, RANKS, type Group } from '../progress/catalog';
-import { available, browserStore, build, buy, checkBowl, complete, CONTROL_PAY, done, equip, findBadge, hasUpgrade, loadProfile, newProfile, rank, saveProfile, tickEvents, type Profile, type Settings, type Store } from '../progress/profile';
+import { available, browserStore, build, buy, checkBowl, complete, CONTROL_PAY, done, equip, findBadge, firstRun, hasUpgrade, loadProfile, newProfile, rank, routeGuided, saveProfile, tickEvents, type Profile, type Settings, type Store } from '../progress/profile';
 import { PatrollerMesh, type Pose } from '../render/characterMesh';
 import { ForestView } from '../render/forestView';
-import { FX_KIND, GroundDrift, Particles, Snowfall, Tracks } from '../render/fx';
+import { FX_KIND, GroundDrift, Particles, Snowfall, SnowVeil, snowLoop, Tracks, veilAmount } from '../render/fx';
 
 /** Vince's hair: honey blonde */
 const VINCE_HAIR = 0xe6c27a;
@@ -112,6 +112,8 @@ export class Game {
   private props!: MissionProps;
   private particles!: Particles;
   private snowfall!: Snowfall;
+  /** fine snow in front of the lens (the vfx.snow flipbook); null until it loads, and on Light */
+  private veil: SnowVeil | null = null;
   private tracks!: Tracks;
   private drift!: GroundDrift;
   private spinT = 0;
@@ -289,6 +291,7 @@ export class Game {
     this.modelled.lift = this.world.liftModelled;
     this.particles = new Particles(this.rig.quality.tier === 'low' ? 1600 : 2600);
     this.loadFxAtlas();
+    this.loadSnowVeil();
     this.snowfall = new Snowfall(this.rig.quality.snowflakes);
     this.drift = new GroundDrift(this.terrain, this.rig.quality.tier === 'low' ? 380 : 700, this.rig.quality.tier === 'low' ? 36 : 64);
     this.tracks = new Tracks(this.terrain, this.rig.quality.tier === 'low' ? 1100 : 1800);
@@ -765,10 +768,15 @@ export class Game {
     const box = document.createElement('div');
     box.className = 'dayblock';
     const d = p.patrolDay;
+    // a first morning: the call dispatch sent you to leads, and the patrol day waits below it
+    const learning = !d && firstRun(p);
     box.innerHTML = d
       ? `<div class="label">Patrol day under way</div><p>${KIND_LABEL[d.plan.kind]} · ${d.phase === 'control' ? 'control route, runs closed' : `${d.results.length} of ${d.plan.calls.length} calls`}</p><div class="row"><button class="btn ghost" data-a="end">End the day and report</button></div>`
-      : `<div class="label">Patrol day</div><p>A full day: the briefing, the control route, the calls, the report. About ten to fifteen minutes.</p><div class="row"><button class="btn red" data-a="day">Start a patrol day</button><button class="btn ghost" data-a="storm">Daily Storm · ${dateLabel(today)}${did ? ' (done)' : ''}</button></div><p class="aside">Streak ${p.storm.streak} · resort safety ${p.safety}/100 · Koda's bond ${p.bond}/100 · ${p.xp} XP</p>`;
-    body.prepend(box);
+      : `<div class="label">Patrol day</div><p>A full day: the briefing, the control route, the calls, the report. About ten to fifteen minutes.</p><div class="row"><button class="btn ${learning ? 'ghost' : 'red'}" data-a="day">Start a patrol day</button><button class="btn ghost" data-a="storm">Daily Storm · ${dateLabel(today)}${did ? ' (done)' : ''}</button></div><p class="aside">Streak ${p.storm.streak} · resort safety ${p.safety}/100 · Koda's bond ${p.bond}/100 · ${p.xp} XP</p>`;
+    if (learning) {
+      box.classList.add('later');
+      (body.querySelector('.board > div:last-child') ?? body).append(box);
+    } else body.prepend(box);
     const on = (a: string, f: () => void) => {
       const b = box.querySelector(`[data-a=${a}]`) as HTMLElement | null;
       if (b) b.onclick = f;
@@ -1456,6 +1464,7 @@ export class Game {
     this.smoke(dt);
     this.particles.update(dt, this.rig.fog, this.pixelScale());
     this.snowfall.update(dt, c.position, this.cond.snow, this.cond.wind * 4, this.cond.wind);
+    this.updateVeil(dt, this.cond.snow, this.cond.wind);
   }
 
   /** While a panel is open: the world holds still, the fire still flickers. */
@@ -1566,6 +1575,7 @@ export class Game {
     this.smoke(dt);
     this.particles.update(dt, this.rig.fog, this.pixelScale());
     this.snowfall.update(dt, this.rig.camera.position, c.snow * (1 - this.indoors * 0.8), c.wind * 6, c.wind * 2);
+    this.updateVeil(dt, c.snow, c.wind);
     this.drift.update(dt, this.rig.camera.position, c.wind, 4, 1, c.snow, 1 - this.indoors);
     this.cam.wind = c.wind;
     this.spindrift(dt, c.wind, c.light);
@@ -1924,6 +1934,9 @@ export class Game {
             this.hud.radio('Avalanche service', 'Charges set. Get clear of the slope: up on the ridge is safe. Then fire.', 5);
           }
           if (s.kind === 'carry') this.hud.radio('Nils', "Thank you. I really didn't fancy another night out here.", 4);
+          // the first ride: the compass points straight over the mountain, the road goes round it
+          if (r.id === 'rounds' && s.kind === 'goto' && firstRun(this.p) && !this.p.settings.routeLine)
+            this.hud.radio('Dispatch', 'Stay on the pass road: follow the dots and the orange poles. Route line in the pause menu keeps the dots on every call.', 6);
           if (r.id === 'skier' && s.kind === 'goto' && e.index === 4) this.hud.radio('Tannberg ski patrol', 'The clinic in Hollin is expecting him.', 3.5);
           this.syncMissionVisuals();
           this.save();
@@ -2574,6 +2587,43 @@ export class Game {
     );
   }
 
+  /** The vfx.snow flipbook: its atlas gives the frames, its meta the rate. Light, or a failed load, goes without. */
+  private veilLoading = false;
+  private loadSnowVeil() {
+    if (this.veil) this.veil.mesh.visible = false;
+    if (!this.rig.quality.fx || this.veil || this.veilLoading) return;
+    this.veilLoading = true;
+    const base = `${import.meta.env.BASE_URL}fx/`;
+    const json = (n: string) => fetch(base + n).then((r) => (r.ok ? r.json() : Promise.reject(new Error(n))));
+    Promise.all([json('snow_atlas.json'), json('snow_flipbook.json'), new THREE.TextureLoader().loadAsync(`${base}snow_flipbook.png`)])
+      .then(([atlas, meta, tex]) => {
+        tex.flipY = false;
+        tex.colorSpace = THREE.NoColorSpace;
+        tex.generateMipmaps = false;
+        tex.minFilter = THREE.LinearFilter;
+        this.veil = new SnowVeil(snowLoop(atlas, meta), tex);
+        this.rig.scene.add(this.veil.mesh);
+      })
+      .catch(() => {
+        /* the 3D flakes carry the snowfall on their own */
+      });
+  }
+
+  private readonly veilRight = new THREE.Vector3();
+  private updateVeil(dt: number, snow: number, wind: number) {
+    const v = this.veil;
+    if (!v) return;
+    if (!this.rig.quality.fx) {
+      v.mesh.visible = false;
+      return;
+    }
+    // the wind blows along +x, +z (as the falling flakes do): how much of it crosses the view
+    const right = this.veilRight.setFromMatrixColumn(this.rig.camera.matrixWorld, 0);
+    const across = (right.x * 6 + right.z * 2) / Math.hypot(6, 2);
+    const cv = this.rig.renderer.domElement;
+    v.update(dt, veilAmount(snow, this.indoors), wind * 6 * across, cv.clientWidth, cv.clientHeight, this.rig.fog.color);
+  }
+
   private hearthFlame = 0;
   private readonly hearthPos = new THREE.Vector3();
 
@@ -2721,12 +2771,12 @@ export class Game {
   }
 
   /**
-   * The route line (an assist, off unless chosen): dots on the snow along the roads to the objective.
-   * Planned again only when the target moves or you stray from the plan; on foot, on the sled and on
+   * The route line (an assist, off unless chosen, and shown on the first ride up the pass road): dots on
+   * the snow along the roads to the objective. Planned again only when the target moves or you stray from the plan; on foot, on the sled and on
    * skis (from the helicopter the beacon and compass are the guide).
    */
   private updateRoute(target: { x: number; z: number } | null, pos: { x: number; z: number }) {
-    const on = this.p.settings.routeLine && !!target && this.mode !== 'heli' && !(this.watching > 0 && !this.watchSkip);
+    const on = routeGuided(this.p) && !!target && this.mode !== 'heli' && !(this.watching > 0 && !this.watchSkip);
     if (!on || !target) {
       this.way = null;
       this.markers.setRoute(null);
@@ -2895,6 +2945,7 @@ export class Game {
     if (q) {
       this.rig.quality = detectQuality(s.quality);
       this.loadFxAtlas();
+    this.loadSnowVeil();
       this.rig.resize();
     }
     this.save();
